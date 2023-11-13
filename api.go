@@ -27,6 +27,7 @@ func (s *APIServer) Run() {
 
 	router.HandleFunc("/account", makeHTTPhandleFunc(s.handleAccount))
 	router.HandleFunc("/account/{id}", makeHTTPhandleFunc(s.handleGetAccountByID))
+	router.HandleFunc("/transfer/", makeHTTPhandleFunc(s.handleTransfer))
 
 	log.Println("JSON API is running on port", s.listenAddr)
 	http.ListenAndServe(s.listenAddr, router)
@@ -36,9 +37,11 @@ func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error 
 	if r.Method == "GET" {
 		return s.handleGetAccount(w, r)
 	}
+
 	if r.Method == "POST" {
 		return s.handleCreateAccount(w, r)
 	}
+
 	if r.Method == "DELETE" {
 		return s.handleDeleteAccount(w, r)
 	}
@@ -52,6 +55,7 @@ func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return err
 	}
+
 	return WriteJSON(w, http.StatusOK, accounts)
 }
 
@@ -82,10 +86,12 @@ func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewDecoder(r.Body).Decode(createAccountReq); err != nil {
 		return err
 	}
+
 	account := NewAccount(createAccountReq.FirstName, createAccountReq.LastName)
 	if err := s.store.CreateAccount(account); err != nil {
 		return err
 	}
+
 	return WriteJSON(w, http.StatusOK, account)
 }
 
@@ -94,22 +100,35 @@ func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return err
 	}
+
 	if err := s.store.DeleteAccount(id); err != nil {
 		return err
 	}
+
 	return WriteJSON(w, http.StatusOK, map[string]int{"deleted": id})
 }
 
 func (s *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	transferReq := new(TranseferRequest)
+	if err := json.NewDecoder(r.Body).Decode(transferReq); err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return WriteJSON(w, http.StatusOK, transferReq)
 }
 
 // writes our response in json
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	w.WriteHeader(status)
 	w.Header().Add("Content-type", "application/json")
+
 	return json.NewEncoder(w).Encode(v)
 }
+
+/*func withJWTAuth(handlerFunc http.HandlerFunc) http.HandlerFunc {
+
+}*/
 
 type apiFunc func(w http.ResponseWriter, r *http.Request) error
 
